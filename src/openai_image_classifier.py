@@ -1,4 +1,5 @@
 import base64
+from typing import Literal
 from pydantic import BaseModel
 from pdf2image import convert_from_path
 import os
@@ -10,7 +11,9 @@ client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
 
 
 class DocumentAnalysis(BaseModel):
-    document_type: str
+    document_type: Literal[
+        "drivers_licence", "bank_statement", "invoice", "unknown file"
+    ]
     notes: str
 
 
@@ -58,36 +61,41 @@ def encode_image(image_path):
 
 def send_pdf_to_gpt4(pdf_path, model="gpt-4o-mini"):
     """Convert PDF to images, encode the first image, and send it to the GPT model."""
-    try:
-        # Convert PDF to images
-        image_path = convert_pdf_to_jpeg(pdf_path)
-        if not image_path:
-            raise ValueError("No images were generated from the PDF.")
+    image_path = convert_pdf_to_jpeg(pdf_path)
+    if not image_path:
+        raise ValueError("No images were generated from the PDF.")
 
-        # encode the first image
-        base64_image = encode_image(image_path)
+    # encode the first image
+    base64_image = encode_image(image_path)
 
-        # Send the image to the model
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "What is in this image?"},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            },
-                        },
-                    ],
-                }
-            ],
-        )
-        return response.choices[0]
-    except Exception as e:
-        return {"error": str(e)}
+    completion = client.beta.chat.completions.parse(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert at classifying documents and understanding their contents"
+                ),
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Analyze this image and provide the document_type and notes on the content",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                    },
+                ],
+            },
+        ],
+        response_format=DocumentAnalysis,  # Structured response
+    )
+
+    document_analysis = completion.choices[0].message.parsed
+    return document_analysis
 
 
 # Usage
