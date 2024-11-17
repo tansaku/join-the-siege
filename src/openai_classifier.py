@@ -5,6 +5,7 @@ from pdf2image import convert_from_path
 import os
 from openai import OpenAI
 from PIL import Image
+from mimetypes import guess_type
 
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
@@ -59,17 +60,32 @@ def encode_image(image_path):
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 
-def send_pdf_to_gpt4(pdf_path, model="gpt-4o-mini"):
-    """Convert PDF to images, encode the first image, and send it to the GPT model."""
-    image_path = convert_pdf_to_jpeg(pdf_path)
-    if not image_path:
-        raise ValueError("No images were generated from the PDF.")
+def process_document_file(file_path, output_folder="output_images"):
+    """Process a document file and return the path to a valid image (JPEG/PNG/WEBP/GIF)."""
+    mime_type, _ = guess_type(file_path)
 
-    # encode the first image
+    # Handle supported image types
+    if mime_type in ["image/jpeg", "image/png", "image/webp", "image/gif"]:
+        return file_path, mime_type  # File is already a supported image format
+
+    # Handle PDFs by converting them to JPEG
+    elif mime_type == "application/pdf":
+        return convert_pdf_to_jpeg(file_path, output_folder=output_folder), "image/jpeg"
+
+    # Raise an error for unsupported types
+    else:
+        raise ValueError(
+            "Unsupported file type. Supported types: PDF, JPEG, PNG, WEBP, GIF."
+        )
+
+
+def query_gpt4(file_path, model="gpt-4o-mini"):
+    """Convert PDF to images, encode the first image, and send it to the GPT model."""
+    image_path, mime_type = process_document_file(file_path)
     base64_image = encode_image(image_path)
 
     completion = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -86,7 +102,7 @@ def send_pdf_to_gpt4(pdf_path, model="gpt-4o-mini"):
                     },
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                        "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
                     },
                 ],
             },
@@ -94,11 +110,20 @@ def send_pdf_to_gpt4(pdf_path, model="gpt-4o-mini"):
         response_format=DocumentAnalysis,  # Structured response
     )
 
+    return completion
+
+
+def classify_file(file_path, model="gpt-4o-mini"):
+    completion = query_gpt4(file_path, model)
     document_analysis = completion.choices[0].message.parsed
     return document_analysis
 
 
-# Usage
-pdf_path = "files/bank_statement_3.pdf"
-result = send_pdf_to_gpt4(pdf_path)
-print(result)
+# TODO:
+# scalability/cost analysis
+# how quickly could we set up similar with off the shelf functionality?
+
+if __name__ == "__main__":
+    a_file_path = "files/bank_statement_3.pdf"
+    result = classify_file(a_file_path)
+    print(result)
