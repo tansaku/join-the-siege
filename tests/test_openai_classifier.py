@@ -16,6 +16,26 @@ TEST_FILES = [
     if os.path.isfile(os.path.join(FILES_DIR, f))
 ]
 
+import vcr
+
+# Define the VCR configuration with a before_record hook
+vcr_config = vcr.VCR(
+    cassette_library_dir="tests/cassettes",
+    record_mode="once",
+    match_on=["uri", "method"],
+    filter_headers=["authorization"],  # Redact the Authorization header
+    before_record_request=lambda request: redact_authorization(request),
+)
+
+
+def redact_authorization(request):
+    """
+    Redact sensitive information (like API keys) from the Authorization header.
+    """
+    if "Authorization" in request.headers:
+        request.headers["Authorization"] = ["Bearer [REDACTED]"]
+    return request
+
 
 def get_classification(file_path):
     """
