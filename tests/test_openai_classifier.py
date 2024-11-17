@@ -56,6 +56,9 @@ def get_classification(file_path):
     # Remove trailing numbers with an underscore
     base_name = re.sub(r"_\d+$", "", base_name)
 
+    if base_name == "drivers_license":
+        return "drivers_licence"
+
     return base_name
 
 
