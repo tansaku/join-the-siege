@@ -108,25 +108,46 @@ def analyze_cassettes_with_tokens_and_jpeg_sizes(
     return pd.DataFrame(metrics)
 
 
-def plot_relationships_with_jpeg_sizes(df):
+def plot_relationships_with_consistent_coloring(df):
     """
-    Create scatter plots for relationships between JPEG file sizes, tokens, and processing time.
+    Create scatter plots for relationships between JPEG file sizes, tokens, processing time, and costs,
+    with consistent colors for each file across all plots and legends in each graph.
 
     Args:
         df (pd.DataFrame): DataFrame with file metrics.
     """
     # Filter rows with valid JPEG sizes and tokens
     df = df.dropna(
-        subset=["jpeg_size_bytes", "total_tokens", "processing_time_ms"]
+        subset=[
+            "jpeg_size_bytes",
+            "prompt_tokens",
+            "completion_tokens",
+            "processing_time_ms",
+        ]
     ).copy()
 
     # Convert JPEG size to kilobytes and tokens to thousands
     df["jpeg_size_kb"] = df["jpeg_size_bytes"] / 1024
     df["total_tokens_thousands"] = df["total_tokens"] / 1000
 
-    # Set up a 1x2 plot grid
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-    fig.subplots_adjust(wspace=0.3)
+    # Calculate costs
+    df["normal_input_cost"] = df["prompt_tokens"] * 0.150 / 1_000_000
+    df["normal_output_cost"] = df["completion_tokens"] * 0.600 / 1_000_000
+    df["batch_input_cost"] = df["prompt_tokens"] * 0.075 / 1_000_000
+    df["batch_output_cost"] = df["completion_tokens"] * 0.300 / 1_000_000
+
+    # Total normal and batch costs
+    df["normal_total_cost"] = df["normal_input_cost"] + df["normal_output_cost"]
+    df["batch_total_cost"] = df["batch_input_cost"] + df["batch_output_cost"]
+
+    # Define a consistent color palette based on file names
+    unique_files = df["file_name"].unique()
+    palette = sns.color_palette("husl", len(unique_files))  # Generate unique colors
+    file_colors = dict(zip(unique_files, palette))  # Map file names to colors
+
+    # Set up a 2x2 plot grid
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+    fig.subplots_adjust(hspace=0.4, wspace=0.3)
 
     # Total Tokens vs. JPEG Size
     sns.scatterplot(
@@ -134,14 +155,14 @@ def plot_relationships_with_jpeg_sizes(df):
         x="jpeg_size_kb",
         y="total_tokens_thousands",
         hue="file_name",
-        ax=axes[0],
+        palette=file_colors,
+        ax=axes[0, 0],
         s=100,
-        palette="viridis",
     )
-    axes[0].set_title("Total Request Tokens vs. JPEG File Size", fontsize=14)
-    axes[0].set_xlabel("JPEG File Size (KB)", fontsize=12)
-    axes[0].set_ylabel("Total Request Tokens (Thousands)", fontsize=12)
-    axes[0].grid(True)
+    axes[0, 0].set_title("Total Request Tokens vs. JPEG File Size", fontsize=14)
+    axes[0, 0].set_xlabel("JPEG File Size (KB)", fontsize=12)
+    axes[0, 0].set_ylabel("Total Request Tokens (Thousands)", fontsize=12)
+    axes[0, 0].grid(True)
 
     # Processing Time vs. JPEG Size
     sns.scatterplot(
@@ -149,14 +170,46 @@ def plot_relationships_with_jpeg_sizes(df):
         x="jpeg_size_kb",
         y="processing_time_ms",
         hue="file_name",
-        ax=axes[1],
+        palette=file_colors,
+        ax=axes[0, 1],
         s=100,
-        palette="plasma",
     )
-    axes[1].set_title("Processing Time vs. JPEG File Size", fontsize=14)
-    axes[1].set_xlabel("JPEG File Size (KB)", fontsize=12)
-    axes[1].set_ylabel("Processing Time (ms)", fontsize=12)
-    axes[1].grid(True)
+    axes[0, 1].set_title("Processing Time vs. JPEG File Size", fontsize=14)
+    axes[0, 1].set_xlabel("JPEG File Size (KB)", fontsize=12)
+    axes[0, 1].set_ylabel("Processing Time (ms)", fontsize=12)
+    axes[0, 1].grid(True)
+
+    # Normal API Cost vs. JPEG Size
+    sns.scatterplot(
+        data=df,
+        x="jpeg_size_kb",
+        y="normal_total_cost",
+        hue="file_name",
+        palette=file_colors,
+        ax=axes[1, 0],
+        s=100,
+    )
+    axes[1, 0].set_title("Normal API Cost vs. JPEG File Size", fontsize=14)
+    axes[1, 0].set_xlabel("JPEG File Size (KB)", fontsize=12)
+    axes[1, 0].set_ylabel("Normal API Cost ($)", fontsize=12)
+    axes[1, 0].set_ylim(0, 0.0075)  # Fixed y-axis range
+    axes[1, 0].grid(True)
+
+    # Batch API Cost vs. JPEG Size
+    sns.scatterplot(
+        data=df,
+        x="jpeg_size_kb",
+        y="batch_total_cost",
+        hue="file_name",
+        palette=file_colors,
+        ax=axes[1, 1],
+        s=100,
+    )
+    axes[1, 1].set_title("Batch API Cost vs. JPEG File Size", fontsize=14)
+    axes[1, 1].set_xlabel("JPEG File Size (KB)", fontsize=12)
+    axes[1, 1].set_ylabel("Batch API Cost ($)", fontsize=12)
+    axes[1, 1].set_ylim(0, 0.0075)  # Fixed y-axis range
+    axes[1, 1].grid(True)
 
     # Show the plots
     plt.show()
@@ -170,6 +223,6 @@ df = analyze_cassettes_with_tokens_and_jpeg_sizes(
     CASSETTES_DIR, OUTPUT_DIR, CONVERTED_DIR
 )
 
-# Display DataFrame and plot with Seaborn
+# Display DataFrame and plot
 print(df)
-plot_relationships_with_jpeg_sizes(df)
+plot_relationships_with_consistent_coloring(df)
