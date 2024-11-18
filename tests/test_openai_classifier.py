@@ -1,8 +1,10 @@
 import os
 import re
-import vcr
 import pytest
-from src.openai_classifier import query_gpt4
+import vcr
+from io import BytesIO
+from werkzeug.datastructures import FileStorage
+from src.openai_classifier import classify_file, create_filestorage_from_path
 
 # Directory to store VCR cassettes
 CASSETTES_DIR = "tests/cassettes"
@@ -16,25 +18,13 @@ TEST_FILES = [
     if os.path.isfile(os.path.join(FILES_DIR, f))
 ]
 
-import vcr
-
 # Define the VCR configuration with a before_record hook
 vcr_config = vcr.VCR(
-    cassette_library_dir="tests/cassettes",
+    cassette_library_dir=CASSETTES_DIR,
     record_mode="once",
     match_on=["uri", "method"],
     filter_headers=["authorization"],  # Redact the Authorization header
-    before_record_request=lambda request: redact_authorization(request),
 )
-
-
-def redact_authorization(request):
-    """
-    Redact sensitive information (like API keys) from the Authorization header.
-    """
-    if "Authorization" in request.headers:
-        request.headers["Authorization"] = ["Bearer [REDACTED]"]
-    return request
 
 
 def get_classification(file_path):
@@ -67,10 +57,11 @@ def test_classify_file(file_path):
     cassette_path = os.path.join(CASSETTES_DIR, f"{os.path.basename(file_path)}.yaml")
 
     with vcr.use_cassette(cassette_path, record_mode="once"):
-        # Call the real classify_file function
-        response = query_gpt4(file_path)
+        # Convert the file path to a FileStorage object
+        file_storage = create_filestorage_from_path(file_path)
+
+        # Call the classify_file function
+        response = classify_file(file_storage)
 
         # Validate the response structure
-        assert response.choices[0].message.parsed.document_type == get_classification(
-            file_path
-        )
+        assert response.document_type == get_classification(file_path)
