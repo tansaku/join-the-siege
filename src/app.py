@@ -1,5 +1,9 @@
 from flask import Flask, request, jsonify
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from src.openai_classifier import classify_file
 
 app = Flask(__name__)
