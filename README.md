@@ -1,4 +1,4 @@
-# **Heron File Classifier**
+# **Heron File Classifier (Join The Siege)**
 
 This project provides a Flask-based file classification service, enhanced with OpenAI's GPT-4 capabilities for robust document analysis. The classifier supports various document types, such as PDFs and images (JPEG, PNG, WEBP, GIF), and outputs structured classifications using a Pydantic model.
 
@@ -6,7 +6,7 @@ This project provides a Flask-based file classification service, enhanced with O
 
 At Heron, document processing workflows rely heavily on automated classification for scaling. For this challenge I chose to use OpenAI's GPT-4 to handle poorly named files, scale across industries, and process larger volumes.
 
-Of course maybe the preference would be an in house solution, but there are many off the shelf vision LLMs that could be hosted internally to ensure privacy and security if OpenAI's enterprise guarantees were not sufficient.
+Customer privacy may necessitate an in-house solution, but there are many off the shelf vision LLMs that could be hosted internally to ensure data was not processed by third parties if OpenAI's enterprise guarantees of confidentiality were not sufficient.
 
 ### **Key Features**
 - **File Format Support**: Handles PDFs, JPEG, PNG, WEBP, and GIF files.
@@ -22,7 +22,7 @@ Of course maybe the preference would be an in house solution, but there are many
 
 ```
 git clone <repository_url>
-cd heron_classifier
+cd join-the-siege
 ```
 
 ### **2. Create a Virtual Environment**

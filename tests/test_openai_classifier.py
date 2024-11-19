@@ -64,4 +64,4 @@ def test_classify_file(file_path):
         response = classify_file(file_storage)
 
         # Validate the response structure
-        assert response.document_type == get_classification(file_path)
+        assert response == get_classification(file_path)
