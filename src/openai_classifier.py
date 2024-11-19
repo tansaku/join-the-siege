@@ -21,7 +21,7 @@ class DocumentAnalysis(BaseModel):
     notes: str
 
 
-def convert_pdf_to_jpeg(file_bytes, output_folder="output_images", dpi=200):
+def convert_pdf_to_jpeg(file_bytes, file_name, output_folder="output_images", dpi=200):
     """
     Convert a PDF (in bytes) to a single stitched JPEG image.
     """
@@ -44,7 +44,7 @@ def convert_pdf_to_jpeg(file_bytes, output_folder="output_images", dpi=200):
         y_offset += img.height
 
     # Save the final stitched image
-    output_name = "converted.jpg"
+    output_name = file_name.replace(".pdf", ".jpg")
     output_path = os.path.join(output_folder, output_name)
     stitched_image.save(output_path, "JPEG")
 
@@ -80,7 +80,7 @@ def process_document_file(file_storage, output_folder="output_images"):
     # Handle PDFs by converting them to JPEG
     elif mime_type == "application/pdf":
         return (
-            convert_pdf_to_jpeg(file_bytes, output_folder=output_folder),
+            convert_pdf_to_jpeg(file_bytes, file_name, output_folder=output_folder),
             "image/jpeg",
         )
 
